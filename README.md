@@ -10,7 +10,7 @@ update.
 # Feedback
 
 Please send any questions, suggestions and other feedback to
-[justmoon@members.fsf.org].
+<justmoon@members.fsf.org>.
 
 # Usage
 
@@ -57,7 +57,7 @@ for.
 * <del>Plugin doesn't transmit CSS file contents - so CSS live reload does
   not work.</del> **Works now**
 
-Please report any issues to justmoon@members.fsf.org
+Please report any issues to <justmoon@members.fsf.org>
 
 # Thanks to
 
