@@ -10,9 +10,14 @@
 ;;
 ;;; Commentary:
 ;;
-;; o Usage as server:
+;; o For more information, please see
+;;   - XRefresh homepage
+;;     http://xrefresh.binaryage.com/
+;;   - Included README.md
+;; 
+;; o Usage:
 ;;   (require 'xrefresh)
-;;   (xrefresh-start "magic")
+;;   (xrefresh-start)
 ;;
 ;; This server will notify xrefresh clients of any changes to your web
 ;; development projects' files.
@@ -36,6 +41,8 @@
   "0.3.0")
 
 (defconst xrefresh-agent
+  ;; Currently clients complain if they don't recognize the agent,
+  ;; so we'll spoof the OSX server's agent.
   ;;  "Emacs xrefresh.el"
   "OSX xrefresh-server"
   )
@@ -108,9 +115,10 @@
       (if (not (string= xrefresh-message-separator (substring mesg (- (length xrefresh-message-separator)))))
           (throw 'ret nil))
 
-      (message mesg)
-      
-      (xrefresh-process-client-msg proc (json-read-from-string (substring mesg 0 (- (length xrefresh-message-separator))))))
+      (xrefresh-process-client-msg
+       proc
+       (json-read-from-string
+        (substring mesg 0 (- (length xrefresh-message-separator))))))
     (throw 'ret t)))
 
 ;;-----------------------------------------------------------------------------
@@ -260,7 +268,6 @@
 (defun xrefresh-save-hook ()
   "xrefresh: Triggers notification when a file has been saved"
   (interactive)
-  (message (buffer-file-name))
   (xrefresh-client-sendall-do-refresh "/" "Various" "type" "date" "time" '('(:action "changed" :path1 ,(buffer-file-name) :path2 nil)))
 )
 
