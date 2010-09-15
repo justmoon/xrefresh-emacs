@@ -19,8 +19,8 @@ Send any questions, suggestions and other feedback to
 
 2. Add the following to your dot-emacs:
 
-   (require 'xrefresh)
-   (xrefresh-start)
+       (require 'xrefresh)
+       (xrefresh-start)
 
 For customizing your configuration, please see below.
 
