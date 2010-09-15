@@ -9,9 +9,8 @@ update.
 
 # Feedback
 
-Send any questions, suggestions and other feedback to
-
-     justmoon@members.fsf.org
+Please send any questions, suggestions and other feedback to
+[justmoon@members.fsf.org].
 
 # Usage
 
@@ -55,8 +54,10 @@ for.
 
 # Outstanding issues
 
-* Plugin doesn't transmit CSS file contents - so CSS live reload does
-  not work.
+* <s>Plugin doesn't transmit CSS file contents - so CSS live reload does
+  not work.</s> **Works now**
+
+Please report any issues to justmoon@members.fsf.org
 
 # Thanks to
 

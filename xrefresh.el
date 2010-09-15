@@ -2,10 +2,9 @@
 
 ;; xrefresh.el is free software
 ;; -*-mode:Emacs-Lisp;tab-width:4;indent-tabs-mode:nil-*-
-;; Time-stamp: <2005-03-04 19:20:44 dhu2kor>
 ;;-----------------------------------------------------------------------------
 ;; File:   xrefresh.el
-;; Author: Stefan Thomas (moon@justmoon.net)
+;; Author: Stefan Thomas (justmoon@members.fsf.org)
 ;; Status: Development (flaky)
 ;;
 ;;; Commentary:
@@ -50,6 +49,8 @@
 (defconst xrefresh-message-separator
   "---XREFRESH-MESSAGE---")
 
+;; Configuration options
+
 ;; Hash tables
 (defvar xrefreshclient-hash
   (make-hash-table :test 'eq)
@@ -66,24 +67,21 @@
 ;;-----------------------------------------------------------------------------
 ;; xrefresh-start
 ;;-----------------------------------------------------------------------------
-(defun xrefresh-start (&optional magic port)
+(defun xrefresh-start (&optional port)
   "xrefresh: Starts a server on specified port and binds to localhost"
   (interactive)
   (catch 'ret
     (let ((server-port (if (integerp port)
                port
-             41258))
-      (key (if magic
-           magic
-         "houdini")))
+             41258)))
 
       ;; Prevent running another server on same port
       ;; in the current emacs session
       (if (gethash server-port xrefresh-hash)
       (throw 'ret nil))
 
-      ;; Store a hash of port->(magic,server proc) for client auth
-      (puthash server-port (cons key (make-network-process
+      ;; Store a hash of port->server-proc
+      (puthash server-port (make-network-process
                       :name "xrefresh"
                       :buffer nil
                       :type nil
@@ -93,7 +91,7 @@
                       :noquery t
                       :filter 'xrefresh-filter
                       :sentinel 'xrefresh-sentinel
-                      :keepalive t))
+                      :keepalive t)
            xrefresh-hash))
     (throw 'ret t)))
 
@@ -109,8 +107,6 @@
           (auth (gethash proc xrefreshclient-hash))
           (serv (gethash (aref (process-contact proc ':local) 4)
                          xrefresh-hash)))
-      (if (not (listp serv))
-          (throw 'ret nil))
 
       (if (not (string= xrefresh-message-separator (substring mesg (- (length xrefresh-message-separator)))))
           (throw 'ret nil))
@@ -138,7 +134,7 @@
   (interactive)
   (xrefreshclient-kill)                    ; Clear the clients first
   (maphash '(lambda (key val)
-          (delete-process (cdr val))) xrefresh-hash)
+          (delete-process val)) xrefresh-hash)
   (clrhash xrefresh-hash)
   (if (interactive-p)
       (message "Emacs client & server processes cleared")))
@@ -150,7 +146,7 @@
   "xrefresh: Enumerate server instances"
   (interactive)
   (maphash '(lambda (key val)
-          (princ (format "Server process:%s,Auth:%s" (cdr val) (car val))))
+          (princ (format "Server process:%s\n" val)))
        xrefresh-hash))
 
 ;;-----------------------------------------------------------------------------
@@ -160,9 +156,9 @@
   "xrefresh: Refreshes client instance hash by clearing dead connections"
   (interactive)
   (maphash '(lambda (key val)
-          (if (/= (process-exit-status key) 0)
-          (remhash key xrefreshclient-hash)))
-       xrefreshclient-hash)
+              (if (not (eq (process-status key) 'open))
+                  (remhash key xrefreshclient-hash)))
+           xrefreshclient-hash)
   (if (interactive-p)
       (message "Emacs client processes refreshed")))
 
@@ -174,7 +170,7 @@
   (interactive)
   (xrefreshclient-refresh)
   (maphash '(lambda (key val)
-          (princ (format "Client process:%s, Auth:%s" key val)))
+          (princ (format "Client process:%s, Info:%s\n" key val)))
        xrefreshclient-hash))
 
 ;;-----------------------------------------------------------------------------
@@ -196,21 +192,23 @@
   "xrefresh: Interpret a message received from an XRefresh client"
   (let ((command (cdr (assoc 'command msg-json)))
         (client-plist (gethash process xrefreshclient-hash)))
-       (cond
-        ((string= command "Hello")
-         (plist-put client-plist :type (cdr (assoc 'type msg-json)))
-         (plist-put client-plist :agent (cdr (assoc 'agent msg-json)))
-         (xrefresh-client-send-about process)
-         (print client-plist)
-         (message "Client %s has disconnected" (plist-get client-plist :name))
-         )
-        ((string= command "Bye")
-         (delete-process process)
-         (message "Client %s has disconnected" (plist-get client-plist :name))
-         )
-        ((string= command "SetPage")
-         (message "Client %s changed page to %s" (plist-get client-plist :name) (cdr (assoc 'url msg-json)))
-         )))
+    (cond
+     ((string= command "Hello")
+      (plist-put client-plist :type (cdr (assoc 'type msg-json)))
+      (plist-put client-plist :agent (cdr (assoc 'agent msg-json)))
+      (xrefresh-client-send-about process)
+      (print client-plist)
+      (message "%s: %s connected" (plist-get client-plist :name) (plist-get client-plist :type))
+      )
+     ((string= command "Bye")
+      (delete-process process)
+      (message "%s: %s disconnected" (plist-get client-plist :name) (plist-get client-plist :type))
+      )
+     ((string= command "SetPage")
+      (plist-put client-plist :url (cdr (assoc 'url msg-json)))
+      ;; DEBUG:
+      ;; (message "xrefresh: Client %s changed page to %s" (plist-get client-plist :name) (cdr (assoc 'url msg-json)))
+      )))
   )
 
 ;;-----------------------------------------------------------------------------
@@ -228,20 +226,41 @@
 ;;-----------------------------------------------------------------------------
 ;; xrefresh-client-sendall-do-refresh
 ;;-----------------------------------------------------------------------------
+
+;; thanks to “Pascal J Bourguignon” and “TheFlyingDutchman <zzbba...@aol.com>”. 2010-09-02
+(defun get-string-from-file (filePath)
+  "Return FILEPATH's file content."
+  (with-temp-buffer
+    (insert-file-contents filePath)
+    (buffer-string)))
+
+
 (defun xrefresh-client-sendall-do-refresh (root name type date time files)
   "xrefresh: Notify a client about a changed file"
-  (setq contents '())
-  (xrefresh-send (json-encode
-                  `(:command "DoRefresh"
-                             :root ,root
-                             :name ,name
-                             :date ,date
-                             :time ,time
-                             :type ,type
-                             :files ,files
-                             :contents ,contents
-                             )))
-  )
+  (let ((contents nil)
+        (json-msg nil))
+    (mapc (lambda (item)
+            (if (string-match "\.css$" (plist-get item :path1))
+                (progn (let ((path (plist-get item :path1))
+                             (globalpath nil)
+                             (content nil))
+                         (setq globalpath (concat root path))
+                         (setq content (get-string-from-file globalpath))
+                         (push `(,path . ,content) contents)))
+            ))
+            files)
+
+    (setq json-msg `(:command "DoRefresh"
+                              :root ,root
+                              :name ,name
+                              :date ,date
+                              :time ,time
+                              :type ,type
+                              :files ,files
+                              :contents ,contents
+                              ))
+
+    (xrefresh-send (json-encode json-msg))))
 
 ;;-----------------------------------------------------------------------------
 ;; xrefresh-send-to-client
@@ -258,6 +277,8 @@
 (defun xrefresh-send (text)
   "xrefresh: Send a command to all XRefresh clients"
   (interactive "sEnter text to be broadcast:")
+  (xrefreshclient-refresh)
+
   (maphash '(lambda (key val)
               (xrefresh-send-to-client key text))
            xrefreshclient-hash))
@@ -268,7 +289,9 @@
 (defun xrefresh-save-hook ()
   "xrefresh: Triggers notification when a file has been saved"
   (interactive)
-  (xrefresh-client-sendall-do-refresh "/" "Various" "type" "date" "time" '('(:action "changed" :path1 ,(buffer-file-name) :path2 nil)))
+  (let ((files nil))
+    (setq files (vector `(:action "changed" :path1 ,buffer-file-name :path2 nil)))
+    (xrefresh-client-sendall-do-refresh "/" "Various" "type" "date" "time" files))
 )
 
 (add-hook 'after-save-hook 'xrefresh-save-hook)
