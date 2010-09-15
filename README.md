@@ -54,8 +54,8 @@ for.
 
 # Outstanding issues
 
-* <s>Plugin doesn't transmit CSS file contents - so CSS live reload does
-  not work.</s> **Works now**
+* <del>Plugin doesn't transmit CSS file contents - so CSS live reload does
+  not work.</del> **Works now**
 
 Please report any issues to justmoon@members.fsf.org
 
