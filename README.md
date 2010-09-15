@@ -22,7 +22,7 @@ Send any questions, suggestions and other feedback to
        (require 'xrefresh)
        (xrefresh-start)
 
-For customizing your configuration, please see below.
+   For customizing your configuration, please see below.
 
 3. Use the XRefresh browser plugin of your choice.
 
