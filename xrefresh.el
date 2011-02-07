@@ -123,8 +123,9 @@
 (defun xrefresh-sentinel (proc mesg)
   "xrefresh: Populate emacs client connections in a hash pending auth'ing"
   (xrefreshclient-refresh)
-  (if (eq (process-status proc) 'open)
-      (puthash proc `(:name ,(process-name proc)) xrefreshclient-hash)))
+  (when (eq (process-status proc) 'open)
+	(set-process-query-on-exit-flag proc nil)
+	(puthash proc `(:name ,(process-name proc)) xrefreshclient-hash)))
 
 ;;-----------------------------------------------------------------------------
 ;; xrefresh-kill
