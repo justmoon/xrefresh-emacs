@@ -1,4 +1,4 @@
-;;; xrefresh.el ---
+;;; xrefresh.el --- Emacs-based server for xrefresh
 
 ;; xrefresh.el is free software
 ;; -*-mode:Emacs-Lisp;tab-width:4;indent-tabs-mode:nil-*-
@@ -8,6 +8,12 @@
 ;; Status: Development (flaky)
 ;;
 ;;; Commentary:
+;;
+;; You're looking at an Emacs-based server for xrefresh. Use it to
+;; automatically refresh your browser as you're developing in Emacs.
+;;
+;; This obviously goes very well with Emacs' "never leave the home row"
+;; philosophy. Just hit C-f C-s and watch your browser window update.
 ;;
 ;; o For more information, please see
 ;;   - XRefresh homepage
